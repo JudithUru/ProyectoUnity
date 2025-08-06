@@ -88,11 +88,13 @@ public class GameOverUI : MonoBehaviour
         // Play button click sound
         PlayButtonClickSound();
         
+        // No detener el audio aquí, el GameManager se encargará
+        // El audio se detendrá solo cuando sea necesario
+        
         // Retry the run
         if (gameManager != null)
         {
             gameManager.ResetRun();
-            gameManager.LoadLevel(1);
         }
         else
         {
@@ -159,7 +161,12 @@ public class GameOverUI : MonoBehaviour
     /// </summary>
     private void PlayGameOverSound()
     {
-        if (audioSource != null && gameOverSound != null)
+        // Usar el AudioManager principal para reproducir música de Game Over
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameOverMusic();
+        }
+        else if (audioSource != null && gameOverSound != null)
         {
             audioSource.PlayOneShot(gameOverSound);
         }
@@ -198,5 +205,7 @@ public class GameOverUI : MonoBehaviour
         }
     }
 }
+
+
 
 

@@ -116,6 +116,9 @@ public class VictoryUI : MonoBehaviour
         // Play button click sound
         PlayButtonClickSound();
         
+        // No detener el audio aquí, el GameManager se encargará
+        // El audio se detendrá solo cuando sea necesario
+        
         // Start a new run
         if (gameManager != null)
         {
@@ -171,7 +174,12 @@ public class VictoryUI : MonoBehaviour
     /// </summary>
     private void PlayVictorySound()
     {
-        if (audioSource != null && victorySound != null)
+        // Usar el AudioManager principal para reproducir música de Win
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayWinMusic();
+        }
+        else if (audioSource != null && victorySound != null)
         {
             audioSource.PlayOneShot(victorySound);
         }
@@ -232,5 +240,7 @@ public class VictoryUI : MonoBehaviour
         }
     }
 }
+
+
 
 
