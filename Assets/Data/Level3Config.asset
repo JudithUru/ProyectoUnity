@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelIndex: 3
   levelName: Level 3
-  targetCoins: 20
+  targetCoins: 7
   collectibleSpawnInterval: 1.5
   obstacleSpawnInterval: 2
   maxObstaclesOnScreen: 20
