@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3287483589167080484
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7333210114078558010}
+  - component: {fileID: 4528966393429219019}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &7333210114078558010
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3287483589167080484}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4528966393429219019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3287483589167080484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc31f451c82716429237707563a9d73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicSource: {fileID: 0}
+  sfxSource: {fileID: 0}
+  mainMenuMusic: {fileID: 8300000, guid: acad81b19f7ec674eb93d0ea1cadbeec, type: 3}
+  gameMusic: {fileID: 8300000, guid: 7f39de7f03933574aa73f88367ac13b1, type: 3}
+  collectSound: {fileID: 8300000, guid: 58a2fb3479c94ca49aa42b4e4fbfd273, type: 3}
+  damageSound: {fileID: 8300000, guid: 16371b882bbdb37469c38bf35ae3cdf4, type: 3}
+  gameStartSound: {fileID: 0}
+  gameOverSound: {fileID: 8300000, guid: d5c792f4d59cbae42a30474b412cb115, type: 3}
+  winSound: {fileID: 8300000, guid: 69ef6a9c361c9f1458cb95a7a495bd7e, type: 3}
+  buttonClickSound: {fileID: 0}
+  levelCompleteSound: {fileID: 8300000, guid: f5bcb3c8a7724fe479abe5aac493746c, type: 3}
+  levelUpSound: {fileID: 0}
+  musicVolume: 0.671
+  sfxVolume: 1
