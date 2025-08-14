@@ -1,0 +1,91 @@
+===============================================================================
+                    MANUAL DEL JUEGO UNITY 2D
+===============================================================================
+
+DESCRIPCIÓN:
+SUPER CAT - Un gato superheroe que vuela por el espacio recolectando monedas doradas
+mientras evita peligrosos obstáculos espaciales. ¡Demuestra tu destreza volando a través
+de 3 niveles con dificultad creciente!
+
+GÉNERO: Plataformas 2D / Arcade / Aventura espacial
+PERSONAJE: Super Cat - Gato con poderes de vuelo
+AMBIENTE: Espacio exterior con gravedad personalizada
+
+===============================================================================
+OBJETIVO:
+- Recolectar todas las monedas de cada nivel
+- Completar los 3 niveles sin perder todas las vidas
+- Victoria: Completar Nivel 3 | Derrota: 0 vidas
+
+===============================================================================
+CONTROLES:
+- MOVIMIENTO: WASD o flechas del teclado
+- VELOCIDAD: 5 unidades/segundo (máx: 8)
+- LÍMITES: No puedes salir de la pantalla
+
+===============================================================================
+SISTEMA DE JUEGO:
+VIDAS:
+- Iniciales: 3 vidas
+- Pierdes 1 vida al tocar obstáculos
+- Ganas +1 vida al completar un nivel
+
+MONEDAS PREDETERMINADAS OBJETIVO (SE PUEDEN MODIFICAR):
+- Nivel 1: 10 monedas objetivo
+- Nivel 2: 15 monedas objetivo  
+- Nivel 3: 20 monedas objetivo
+- Cada moneda = 1 punto
+
+===============================================================================
+ELEMENTOS:
+MONEDAS:
+- Color amarillo brillante
+- Rotan y flotan arriba/abajo
+- Sonido al recolectar
+
+OBSTÁCULOS:
+- Estáticos, caen por gravedad
+- Te quitan 1 vida al tocar
+- Sonido al chocarse
+
+===============================================================================
+NIVELES CON CONFIGURACIÓN PREDETERMINADAS:
+NIVEL 1: 10 monedas, spawn cada 2s
+NIVEL 2: 15 monedas, spawn cada 1.5s  
+NIVEL 3: 20 monedas, spawn cada 1s
+
+===============================================================================
+FLUJO DEL JUEGO:
+1. Menú principal → Nueva Partida
+2. Nivel 1 → recolectar 10 monedas (PREDETERMINADAS)
+3. Nivel 2 → recolectar 15 monedas (PREDETERMINADAS)
+4. Nivel 3 → recolectar 20 monedas (PREDETERMINADAS)
+5. Victoria final
+
+PERDER VIDA: Tocar obstáculo → -1 vida
+GAME OVER: 0 vidas → Reintentar o Menú Principal
+
+===============================================================================
+AUDIO:
+- Música diferente para cada estado (menú, juego, game over, victoria)
+- Efectos de sonido para todas las acciones
+
+===============================================================================
+CONFIGURACIONES:
+- Velocidad del jugador: 5-8 unidades/segundo
+- Vidas iniciales: 3
+- Monedas objetivo por nivel
+- Intervalos de spawn
+- Volúmenes de audio
+
+===============================================================================
+ARQUITECTURA:
+- GameManager: Controla estado global
+- PlayerController2D: Movimiento del jugador
+- Spawner2D: Genera monedas y obstáculos
+- AudioManager: Maneja todo el audio
+- HUDController: Interfaz de usuario
+
+===============================================================================
+FIN DEL MANUAL
+===============================================================================
