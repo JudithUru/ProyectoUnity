@@ -8,6 +8,11 @@ public class LevelController : MonoBehaviour
     public HUDController hudController;
     public GameObject victoryPanel;
     public GameObject gameOverPanel;
+    public LevelTransitionPanel levelTransitionPanel;
+    
+    [Header("Level Celebration")]
+    public ParticleSystem levelCompleteParticles;
+    public float celebrationDuration = 2f;
 
     [Header("Level Settings")]
     public int levelIndex = 1;
@@ -120,6 +125,53 @@ public class LevelController : MonoBehaviour
         {
             spawner.StopSpawning();
         }
+        
+        // Show level transition panel if not the final level
+        if (levelTransitionPanel != null && levelIndex < 3)
+        {
+            levelTransitionPanel.ShowLevelTransition(levelIndex + 1);
+        }
+        
+        // Start level celebration
+        StartCoroutine(CelebrateLevelComplete());
+    }
+    
+    /// <summary>
+    /// Corrutina para celebrar la completación del nivel
+    /// </summary>
+    private System.Collections.IEnumerator CelebrateLevelComplete()
+    {
+        Debug.Log($"LevelController: Starting celebration for level {levelIndex}");
+        
+        // Play level complete sound
+        if (gameManager != null && gameManager.audioManager != null)
+        {
+            if (levelIndex < 3)
+            {
+                gameManager.audioManager.PlayLevelCompleteSound();
+            }
+            else
+            {
+                gameManager.audioManager.PlayWinSound();
+            }
+        }
+        
+        // Show celebration particles
+        if (levelCompleteParticles != null)
+        {
+            levelCompleteParticles.Play();
+        }
+        
+        // Wait for celebration duration
+        yield return new WaitForSeconds(celebrationDuration);
+        
+        // Stop particles
+        if (levelCompleteParticles != null)
+        {
+            levelCompleteParticles.Stop();
+        }
+        
+        Debug.Log($"LevelController: Celebration completed for level {levelIndex}");
     }
 
     private void OnGameOver()

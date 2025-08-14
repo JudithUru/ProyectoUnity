@@ -27,18 +27,34 @@ public class Spawner2D : MonoBehaviour
     private bool isSpawning = false;
     private Vector2 screenBounds;
     private Camera mainCamera;
+    private CameraFollow cameraFollow;
     private int coinsSpawned = 0;
     
     void Start()
     {
         Debug.Log("Spawner2D: Start() called");
         
+        // Clear all existing objects first
+        ClearAllObjects();
+        
         // Get main camera and calculate screen bounds
         mainCamera = Camera.main;
         if (mainCamera != null)
         {
-            screenBounds = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, 0f));
-            Debug.Log("Spawner2D: Screen bounds calculated - Width: " + screenBounds.x + ", Height: " + screenBounds.y);
+            // Try to get real camera bounds from CameraFollow
+            cameraFollow = mainCamera.GetComponent<CameraFollow>();
+            if (cameraFollow != null)
+            {
+                // Use real world bounds from CameraFollow
+                screenBounds = new Vector2(cameraFollow.worldWidth / 2f, cameraFollow.worldHeight / 2f);
+                Debug.Log("Spawner2D: Using CameraFollow bounds - Width: " + (cameraFollow.worldWidth) + ", Height: " + (cameraFollow.worldHeight));
+            }
+            else
+            {
+                // Fallback to screen bounds
+                screenBounds = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, 0f));
+                Debug.Log("Spawner2D: Using screen bounds - Width: " + screenBounds.x + ", Height: " + screenBounds.y);
+            }
         }
         
         // Get GameManager if not assigned
@@ -127,6 +143,39 @@ public class Spawner2D : MonoBehaviour
     }
     
     /// <summary>
+    /// Limpia todos los objetos existentes en la escena
+    /// </summary>
+    public void ClearAllObjects()
+    {
+        Debug.Log("Spawner2D: Clearing all existing objects");
+        
+        // Clear all collectibles
+        GameObject[] collectibles = GameObject.FindGameObjectsWithTag("Collectible");
+        foreach (GameObject collectible in collectibles)
+        {
+            if (collectible != null)
+            {
+                DestroyImmediate(collectible);
+            }
+        }
+        
+        // Clear all obstacles
+        GameObject[] obstacles = GameObject.FindGameObjectsWithTag("Obstacle");
+        foreach (GameObject obstacle in obstacles)
+        {
+            if (obstacle != null)
+            {
+                DestroyImmediate(obstacle);
+            }
+        }
+        
+        // Reset spawn counter
+        coinsSpawned = 0;
+        
+        Debug.Log("Spawner2D: All objects cleared");
+    }
+    
+    /// <summary>
     /// Corrutina para spawnear collectibles
     /// </summary>
     IEnumerator SpawnCollectibles()
@@ -158,6 +207,9 @@ public class Spawner2D : MonoBehaviour
     {
         while (isSpawning)
         {
+            // Clean up off-screen obstacles first
+            CleanupOffScreenObstacles();
+            
             // Check if we can spawn more obstacles
             if (CountObjectsWithTag("Obstacle") < maxObstaclesOnScreen)
             {
@@ -179,8 +231,8 @@ public class Spawner2D : MonoBehaviour
         // Choose random collectible
         GameObject collectiblePrefab = collectiblePrefabs[Random.Range(0, collectiblePrefabs.Length)];
         
-        // Calculate spawn position within playable area
-        Vector3 spawnPosition = GetRandomSpawnPositionInPlayArea();
+        // Calculate spawn position for collectibles (whole map)
+        Vector3 spawnPosition = GetRandomCollectibleSpawnPosition();
         
         Debug.Log("Spawner2D: Spawning collectible at position: " + spawnPosition);
         
@@ -210,8 +262,8 @@ public class Spawner2D : MonoBehaviour
         // Choose random obstacle
         GameObject obstaclePrefab = obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)];
         
-        // Calculate spawn position within playable area
-        Vector3 spawnPosition = GetRandomSpawnPositionInPlayArea();
+        // Calculate spawn position for obstacles (top edge only)
+        Vector3 spawnPosition = GetRandomObstacleSpawnPosition();
         
         Debug.Log("Spawner2D: Spawning obstacle at position: " + spawnPosition);
         
@@ -224,11 +276,8 @@ public class Spawner2D : MonoBehaviour
             obstacle.AddComponent<Obstacle>();
         }
         
-        // Add movement component if needed
-        if (obstacleSpeed > 0)
-        {
-            AddMovementComponent(obstacle, obstacleSpeed);
-        }
+        // Add falling movement component for obstacles
+        AddFallingMovementComponent(obstacle, obstacleSpeed);
     }
     
     /// <summary>
@@ -253,6 +302,48 @@ public class Spawner2D : MonoBehaviour
     }
     
     /// <summary>
+    /// Calcula una posición de spawn aleatoria para monedas (todo el mapa)
+    /// </summary>
+    Vector3 GetRandomCollectibleSpawnPosition()
+    {
+        // Calcular área de spawn dentro de los límites de la pantalla
+        float minX = -screenBounds.x + spawnMargin;
+        float maxX = screenBounds.x - spawnMargin;
+        float minY = -screenBounds.y + spawnMargin;
+        float maxY = screenBounds.y - spawnMargin;
+        
+        // Distribuir monedas de manera más equilibrada (evitar solo en los bordes)
+        float randomX = Random.Range(minX, maxX);
+        float randomY = Random.Range(minY, maxY);
+        
+        // Añadir variación para que no se concentren solo en el centro
+        Vector3 position = new Vector3(randomX, randomY, 0f);
+        
+        Debug.Log("Spawner2D: Random collectible spawn position (distributed) - X: " + randomX + ", Y: " + randomY);
+        
+        return position;
+    }
+    
+    /// <summary>
+    /// Calcula una posición de spawn aleatoria para obstáculos (solo desde arriba)
+    /// </summary>
+    Vector3 GetRandomObstacleSpawnPosition()
+    {
+        // Calcular área de spawn solo en la parte superior (Y = límite superior + margen extra)
+        float minX = -screenBounds.x + spawnMargin;
+        float maxX = screenBounds.x - spawnMargin;
+        float spawnY = screenBounds.y + spawnMargin; // Un poco más arriba del límite visible
+        
+        float randomX = Random.Range(minX, maxX);
+        
+        Vector3 position = new Vector3(randomX, spawnY, 0f);
+        
+        Debug.Log("Spawner2D: Random obstacle spawn position (above visible area) - X: " + randomX + ", Y: " + spawnY);
+        
+        return position;
+    }
+    
+    /// <summary>
     /// Agrega componente de movimiento a un objeto
     /// </summary>
     void AddMovementComponent(GameObject obj, float speed)
@@ -266,33 +357,29 @@ public class Spawner2D : MonoBehaviour
     }
     
     /// <summary>
+    /// Agrega componente de movimiento de caída para obstáculos
+    /// </summary>
+    void AddFallingMovementComponent(GameObject obj, float speed)
+    {
+        // Add ObstacleFaller component for falling movement
+        ObstacleFaller faller = obj.GetComponent<ObstacleFaller>();
+        if (faller == null)
+        {
+            faller = obj.AddComponent<ObstacleFaller>();
+        }
+        
+        // Set fall speed
+        faller.fallSpeed = speed;
+        
+        Debug.Log("Spawner2D: Added falling movement to obstacle with speed: " + speed);
+    }
+    
+    /// <summary>
     /// Cuenta objetos con un tag específico
     /// </summary>
     int CountObjectsWithTag(string tag)
     {
         return GameObject.FindGameObjectsWithTag(tag).Length;
-    }
-    
-    /// <summary>
-    /// Limpia todos los objetos de la escena
-    /// </summary>
-    public void ClearAllObjects()
-    {
-        // Destroy all collectibles and obstacles
-        GameObject[] collectibles = GameObject.FindGameObjectsWithTag("Collectible");
-        GameObject[] obstacles = GameObject.FindGameObjectsWithTag("Obstacle");
-        
-        foreach (GameObject obj in collectibles)
-        {
-            Destroy(obj);
-        }
-        
-        foreach (GameObject obj in obstacles)
-        {
-            Destroy(obj);
-        }
-        
-        Debug.Log("Spawner2D: All objects cleared");
     }
     
     /// <summary>
@@ -310,6 +397,28 @@ public class Spawner2D : MonoBehaviour
     {
         return targetCoins - coinsSpawned;
     }
+    
+    /// <summary>
+    /// Limpia obstáculos que salieron de la pantalla
+    /// </summary>
+    public void CleanupOffScreenObstacles()
+    {
+        GameObject[] obstacles = GameObject.FindGameObjectsWithTag("Obstacle");
+        foreach (GameObject obstacle in obstacles)
+        {
+            if (obstacle != null)
+            {
+                // Check if obstacle is below the screen
+                if (obstacle.transform.position.y < -screenBounds.y - 2f)
+                {
+                    Destroy(obstacle);
+                    Debug.Log("Spawner2D: Cleaned up off-screen obstacle");
+                }
+            }
+        }
+    }
 }
+
+
 
 

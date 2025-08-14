@@ -13,18 +13,45 @@ public class PlayerController2D : MonoBehaviour
     [Header("Components")]
     private Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
+    private ParticleManager particleManager;
+    private Animator animator; // Agregamos referencia al Animator
+    
+    [Header("Gravity Settings")]
+    public float gravityScale = 0.5f;
+    public float maxFallSpeed = 10f;
+    public float idleGravityScale = 0.3f; // Gravedad cuando está quieto
+    public float movingGravityScale = 0.1f; // Gravedad cuando se mueve
+    
+    [Header("Control Settings")]
+    public bool controlsLocked = false; // Controla si los controles están bloqueados
     
     void Start()
     {
         // Get components
         rb = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        animator = GetComponent<Animator>(); // Obtenemos el componente Animator
         
         // Configure Rigidbody2D
         if (rb != null)
         {
-            rb.gravityScale = 0f;
+            rb.gravityScale = 0.1f; // Reduced gravity for better control
             rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        }
+        
+        // Get or create ParticleManager
+        particleManager = GetComponent<ParticleManager>();
+        if (particleManager == null)
+        {
+            // Add ParticleManager component and make it visible in Inspector
+            particleManager = gameObject.AddComponent<ParticleManager>();
+            
+            // Force Unity to refresh the Inspector
+            #if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+            #endif
+            
+            Debug.Log("PlayerController2D: ParticleManager component added");
         }
         
         Debug.Log("PlayerController2D: Initialized");
@@ -44,6 +71,27 @@ public class PlayerController2D : MonoBehaviour
     
     void HandleInput()
     {
+        // Check if controls are locked
+        if (controlsLocked)
+        {
+            // Stop all movement when controls are locked
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.gravityScale = 0f; // Disable gravity when controls are locked
+            }
+            
+            // Set idle animation when controls are locked
+            if (animator != null)
+            {
+                animator.SetBool("IsMoving", false);
+                animator.SetFloat("Horizontal", 0);
+                animator.SetFloat("Vertical", 0);
+            }
+            
+            return; // Exit early, don't process any input
+        }
+        
         // Get input axes
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
@@ -57,23 +105,94 @@ public class PlayerController2D : MonoBehaviour
             movement.Normalize();
         }
         
-        // Apply movement
-        if (rb != null)
+        // Check if player is moving
+        bool isMoving = movement.magnitude > 0.1f;
+        
+        // Update Animator parameters
+        if (animator != null)
         {
-            rb.linearVelocity = movement * moveSpeed;
+            animator.SetBool("IsMoving", isMoving);
             
-            // Clamp velocity to max speed
-            if (rb.linearVelocity.magnitude > maxSpeed)
+            // Set Direction parameter based on input
+            if (isMoving)
             {
-                rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
+                // Determine direction based on input
+                if (Mathf.Abs(horizontalInput) > Mathf.Abs(verticalInput))
+                {
+                    // Horizontal movement is dominant
+                    if (horizontalInput > 0)
+                    {
+                        animator.SetInteger("Direction", 1); // Derecha
+                    }
+                    else
+                    {
+                        animator.SetInteger("Direction", 2); // Izquierda
+                    }
+                }
+                else
+                {
+                    // Vertical movement is dominant
+                    if (verticalInput > 0)
+                    {
+                        animator.SetInteger("Direction", 3); // Arriba (asumiendo que 3 es arriba)
+                    }
+                    else
+                    {
+                        animator.SetInteger("Direction", 0); // Abajo
+                    }
+                }
+            }
+            else
+            {
+                // When not moving, keep the last direction
+                // This prevents the animation from changing when stopping
             }
         }
         
-        // Flip sprite based on movement direction
-        if (horizontalInput != 0 && spriteRenderer != null)
+        // Apply gravity based on movement state
+        if (rb != null)
         {
-            spriteRenderer.flipX = horizontalInput < 0;
+            if (isMoving)
+            {
+                // When moving: apply movement and light gravity
+                rb.gravityScale = movingGravityScale;
+                
+                // Apply movement in all directions
+                Vector2 newVelocity = movement * moveSpeed;
+                
+                // Apply movement
+                rb.linearVelocity = newVelocity;
+                
+                // Clamp velocity to max speed
+                if (rb.linearVelocity.magnitude > maxSpeed)
+                {
+                    rb.linearVelocity = rb.linearVelocity.normalized * maxSpeed;
+                }
+            }
+            else
+            {
+                // When idle: apply heavy gravity for falling effect
+                rb.gravityScale = idleGravityScale;
+                
+                // Keep current horizontal velocity but let gravity affect Y
+                Vector2 currentVelocity = rb.linearVelocity;
+                currentVelocity.x = Mathf.Lerp(currentVelocity.x, 0f, Time.deltaTime * 5f); // Slow horizontal stop
+                rb.linearVelocity = currentVelocity;
+            }
+            
+            // Clamp fall speed to prevent falling too fast
+            if (rb.linearVelocity.y < -maxFallSpeed)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, -maxFallSpeed);
+            }
         }
+        
+        // NOTA: Ya no usamos flipX aquí, el Animator se encarga de la dirección
+        // El código anterior era:
+        // if (horizontalInput != 0 && spriteRenderer != null)
+        // {
+        //     spriteRenderer.flipX = horizontalInput < 0;
+        // }
     }
     
     void ClampPosition()
@@ -89,15 +208,15 @@ public class PlayerController2D : MonoBehaviour
         transform.position = pos;
     }
     
-    void OnTriggerEnter2D(Collider2D other)
+    void OnCollisionEnter2D(Collision2D collision)
     {
         // Handle collisions with collectibles and obstacles
-        if (other.CompareTag("Collectible"))
+        if (collision.gameObject.CompareTag("Collectible"))
         {
             Debug.Log("Player: Collected item!");
             // The Coin script will handle the collection
         }
-        else if (other.CompareTag("Obstacle"))
+        else if (collision.gameObject.CompareTag("Obstacle"))
         {
             Debug.Log("Player: Hit obstacle!");
             // The Obstacle script will handle the damage
@@ -147,6 +266,37 @@ public class PlayerController2D : MonoBehaviour
             boundaryX = cameraFollow.worldWidth / 2f;
             boundaryY = cameraFollow.worldHeight / 2f;
             Debug.Log($"PlayerController2D: Boundaries automatically updated to {boundaryX}x{boundaryY}");
+        }
+    }
+    
+    /// <summary>
+    /// Bloquea los controles del jugador (usado cuando pierde)
+    /// </summary>
+    public void LockControls()
+    {
+        controlsLocked = true;
+        Debug.Log("PlayerController2D: Controls locked");
+        
+        // Stop all movement and disable gravity
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.gravityScale = 0f;
+        }
+    }
+    
+    /// <summary>
+    /// Desbloquea los controles del jugador (usado al reiniciar)
+    /// </summary>
+    public void UnlockControls()
+    {
+        controlsLocked = false;
+        Debug.Log("PlayerController2D: Controls unlocked");
+        
+        // Restore normal gravity
+        if (rb != null)
+        {
+            rb.gravityScale = idleGravityScale;
         }
     }
 }

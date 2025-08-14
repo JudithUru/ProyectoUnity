@@ -83,6 +83,18 @@ public class GameManager : MonoBehaviour
         // Reset game state
         ResetRun();
         
+        // Detener todo el audio actual (incluyendo música de Win/Game Over)
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopAllAudio();
+        }
+        
+        // Iniciar música del juego
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameMusic();
+        }
+        
         // Load first level
         LoadLevel(1);
     }
@@ -116,6 +128,12 @@ public class GameManager : MonoBehaviour
         // Notify level change
         OnLevelChanged?.Invoke(currentLevel);
         
+        // Solo iniciar música del juego si no está sonando y no es el primer nivel
+        if (AudioManager.Instance != null && !AudioManager.Instance.IsGameMusicPlaying() && levelIndex > 1)
+        {
+            AudioManager.Instance.PlayGameMusic();
+        }
+        
         // Load scene
         string sceneName = levelDatabase.GetSceneName(levelIndex);
         SceneManager.LoadScene(sceneName);
@@ -134,15 +152,15 @@ public class GameManager : MonoBehaviour
         // Notify UI
         OnCoinsChanged?.Invoke(coinsCollected);
         
+        // Play collect sound immediately
+        if (audioManager != null)
+            audioManager.PlayCollectSound();
+        
         // Check if level is complete
         if (coinsCollected >= targetCoins)
         {
             CompleteLevel();
         }
-        
-        // Play collect sound
-        if (audioManager != null)
-            audioManager.PlayCollectSound();
     }
     
     /// <summary>
@@ -228,19 +246,68 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("GameManager: Resetting run");
         
+        // Detener todo el audio actual (incluyendo música de Game Over)
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopAllAudio();
+        }
+        
         // Reset game state
         currentLevel = 1;
         lives = levelDatabase.startingLives;
         coinsCollected = 0;
-        targetCoins = 10;
+        
+        // Unlock player controls when restarting
+        UnlockPlayerControls();
+        
+        // Get target coins from level configuration instead of hardcoded value
+        if (levelDatabase != null)
+        {
+            LevelConfig level1Config = levelDatabase.GetLevelConfig(1);
+            if (level1Config != null)
+            {
+                targetCoins = level1Config.targetCoins;
+                Debug.Log($"GameManager: ResetRun - Target coins set to {targetCoins} from Level1Config");
+            }
+            else
+            {
+                targetCoins = 10; // Fallback value
+                Debug.LogWarning("GameManager: ResetRun - Level1Config not found, using fallback target coins: 10");
+            }
+        }
+        else
+        {
+            targetCoins = 10; // Fallback value
+            Debug.LogWarning("GameManager: ResetRun - levelDatabase is null, using fallback target coins: 10");
+        }
+        
         isGameActive = false;
         isGamePaused = false;
         isLevelComplete = false;
+        
+        // Iniciar música del juego
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameMusic();
+        }
         
         // Notify UI
         OnCoinsChanged?.Invoke(coinsCollected);
         OnLivesChanged?.Invoke(lives);
         OnLevelChanged?.Invoke(currentLevel);
+        
+        // Cargar directamente la escena del nivel 1 para asegurar que se cambie la imagen de fondo
+        if (levelDatabase != null)
+        {
+            string sceneName = levelDatabase.GetSceneName(1);
+            Debug.Log($"GameManager: ResetRun - Loading scene: {sceneName}");
+            // Usar LoadSceneAsync para evitar conflictos con DontDestroyOnLoad
+            StartCoroutine(LoadSceneAfterReset(sceneName));
+        }
+        else
+        {
+            Debug.LogError("GameManager: ResetRun - levelDatabase is null!");
+        }
     }
     
     /// <summary>
@@ -250,6 +317,9 @@ public class GameManager : MonoBehaviour
     {
         isGameActive = false;
         Debug.Log("GameManager: Game Over!");
+        
+        // Lock player controls when game over
+        LockPlayerControls();
         
         // Notify game over
         OnGameOver?.Invoke();
@@ -267,6 +337,9 @@ public class GameManager : MonoBehaviour
         isGameActive = false;
         Debug.Log("GameManager: Game Won!");
         
+        // Lock player controls when game won (same behavior as game over)
+        LockPlayerControls();
+        
         // Notify game win
         OnGameWin?.Invoke();
         
@@ -282,6 +355,16 @@ public class GameManager : MonoBehaviour
     {
         isGameActive = true;
         Debug.Log("GameManager: Game started!");
+        
+        // Solo iniciar música si no está sonando ya
+        if (AudioManager.Instance != null && !AudioManager.Instance.IsGameMusicPlaying())
+        {
+            AudioManager.Instance.PlayGameMusic();
+        }
+        else if (audioManager != null && !audioManager.IsGameMusicPlaying())
+        {
+            audioManager.PlayGameMusic();
+        }
         
         // Notify game start
         OnGameStart?.Invoke();
@@ -327,7 +410,35 @@ public class GameManager : MonoBehaviour
         if (scene.name.StartsWith("Level"))
         {
             coinsCollected = 0;
+            
+            // Update target coins based on current level configuration
+            UpdateTargetCoinsForCurrentLevel();
+            
             OnCoinsChanged?.Invoke(coinsCollected);
+        }
+    }
+    
+    /// <summary>
+    /// Actualiza el target de monedas según la configuración del nivel actual
+    /// </summary>
+    private void UpdateTargetCoinsForCurrentLevel()
+    {
+        if (levelDatabase != null)
+        {
+            LevelConfig currentLevelConfig = levelDatabase.GetLevelConfig(currentLevel);
+            if (currentLevelConfig != null)
+            {
+                targetCoins = currentLevelConfig.targetCoins;
+                Debug.Log($"GameManager: Updated target coins for level {currentLevel}: {targetCoins}");
+            }
+            else
+            {
+                Debug.LogWarning($"GameManager: LevelConfig not found for level {currentLevel}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: levelDatabase is null, cannot update target coins");
         }
     }
     
@@ -363,5 +474,51 @@ public class GameManager : MonoBehaviour
     public LevelConfig GetCurrentLevelConfig()
     {
         return levelDatabase.GetLevelConfig(currentLevel);
+    }
+    
+    /// <summary>
+    /// Corrutina para cargar la escena después del reset
+    /// </summary>
+    private System.Collections.IEnumerator LoadSceneAfterReset(string sceneName)
+    {
+        // Pequeño delay para asegurar que el reset se complete
+        yield return new WaitForEndOfFrame();
+        
+        Debug.Log($"GameManager: LoadSceneAfterReset - Loading scene: {sceneName}");
+        SceneManager.LoadScene(sceneName);
+    }
+    
+    /// <summary>
+    /// Bloquea los controles del jugador
+    /// </summary>
+    private void LockPlayerControls()
+    {
+        PlayerController2D player = FindFirstObjectByType<PlayerController2D>();
+        if (player != null)
+        {
+            player.LockControls();
+            Debug.Log("GameManager: Player controls locked");
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: Player not found, cannot lock controls");
+        }
+    }
+    
+    /// <summary>
+    /// Desbloquea los controles del jugador
+    /// </summary>
+    private void UnlockPlayerControls()
+    {
+        PlayerController2D player = FindFirstObjectByType<PlayerController2D>();
+        if (player != null)
+        {
+            player.UnlockControls();
+            Debug.Log("GameManager: Player controls unlocked");
+        }
+        else
+        {
+            Debug.LogWarning("GameManager: Player not found, cannot unlock controls");
+        }
     }
 } 
